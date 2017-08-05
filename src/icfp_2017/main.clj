@@ -1,5 +1,6 @@
 (ns icfp-2017.main
   (:require [clojure.data.json :as json]
+            [clojure.set :as set]
             [clojure.tools.logging :as log]))
 
 (defn send-json
@@ -25,14 +26,27 @@
   {"ready" punter
    "state" msg})
 
+(defn riverize
+  [x]
+  (select-keys x ["source" "target"]))
+
+(defn river=
+  [a b]
+  (= (riverize a) (riverize b)))
+
+(defn available-rivers
+  [map moves]
+  (set/difference (get map "rivers")
+                  (map riverize moves)))
+
 (defn handle-move
   [{:strs [moves state] :as msg}]
-  (let [{:strs [punter punters map]} state]
-    {"claim" {"punter" punter
-              ;; TODO:
-              "source" 42
-              "target" 1024}
-     "state" state}))
+  (let [{:strs [punter punters map]} state
+        river (first (available-rivers map moves))]
+    (if river
+      {"claim" (assoc river "punter" punter)
+       "state" state}
+      {"pass" {"punter" punter}})))
 
 (defn handle-stop
   [{:strs [stop]}]

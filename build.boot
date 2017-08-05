@@ -49,13 +49,10 @@
                 (dosh "cp" (.getAbsolutePath (tmp-file input)) (.getAbsolutePath output)))
 
               ;; Create the tar file
-              (apply dosh "tar" "-czf" tar-file "-C" (.getAbsolutePath tmpd) (map #(.getName %) copied-files))
+              (apply dosh "tar" "-czf" (str tar-file ".gz") "-C" (.getAbsolutePath tmpd) (map #(.getName %) copied-files))
 
               ;; Delete the copies
               (apply dosh "rm" "-f" (map #(.getAbsolutePath %) copied-files))
-
-              ;; gzip the tar (deletes tar)
-              (dosh "gzip" tar-file)
 
               (-> fs
                   (add-resource tmpd)

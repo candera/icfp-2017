@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+boot package
+cd target
+tar xvfz icfp-TESTING.tar.gz
+./punter

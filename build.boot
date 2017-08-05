@@ -14,6 +14,7 @@
 
 (require '[icfp-2017.main :as main])
 (require '[clojure.data.json :as json])
+(require '[clojure.java.io :as io])
 (require '[clojure.tools.logging :as log])
 (require '[clojure.test])
 (require 'icfp-2017.test)
@@ -22,7 +23,7 @@
 (defn refresh []
   (require :reload-all '[icfp-2017.main :as main]))
 
-(deftask build-deliverable
+(deftask package
   [t team-id UUID str "Contest team ID. May also be specified with TEAM_ID environment variable."]
   (let [team-id (or team-id
                     (System/getenv "TEAM_ID")
@@ -31,7 +32,22 @@
           (jar :file "punter.jar")
           (sift :include #{#"^punter.jar$"
                            #"^punter$"
-                           #"^install$"}))))
+                           #"^install$"})
+          (with-pre-wrap [fs]
+            (let [tmpd         (tmp-dir!)
+                  files-to-tar (->> fs
+                                    input-files
+                                    (map #(.getAbsolutePath (tmp-file %))))
+                  tar-file     (->> team-id
+                                    (format "icfp-%s.tar")
+                                    (io/file tmpd)
+                                    .getAbsolutePath)]
+              (apply dosh "tar" "-cf" tar-file files-to-tar)
+              (dosh "gzip" tar-file)
+              (-> fs
+                  (add-resource tmpd)
+                  commit!)))
+          (sift :include #{#".tar.gz$"}))))
 
 #_(defn run-tests []
   (clojure.test/run-tests 'icfp-2017.test))

@@ -6,7 +6,7 @@
 (defn send-json
   [out data]
   (log/info "sent: " (pr-str data))
-  (json/write out data))
+  (json/write data out))
 
 (defn read-json
   [in]
@@ -34,15 +34,19 @@
   [a b]
   (= (riverize a) (riverize b)))
 
-(defn available-rivers
+(defn unclaimed-rivers
   [map moves]
-  (set/difference (get map "rivers")
-                  (map riverize moves)))
+  (set/difference (set (get map "rivers"))
+                  (->> moves
+                       (map #(get % "claim"))
+                       (remove nil?)
+                       (map riverize)
+                       set)))
 
 (defn handle-move
   [{:strs [moves state] :as msg}]
   (let [{:strs [punter punters map]} state
-        river (first (available-rivers map moves))]
+        river (first (unclaimed-rivers map moves))]
     (if river
       {"claim" (assoc river "punter" punter)
        "state" state}
@@ -67,19 +71,19 @@
    :stop  handle-stop})
 
 (defn read-message
-  [in out]
-  (handshake in out)
+  [name in out]
+  (handshake name in out)
   (read-json in))
 
 (defn run
-  [in out]
-  (loop [msg (read-message in out)]
-    (let [type (message-type msg)
+  [name in out]
+  (loop [msg (read-message name in out)]
+    (let [type    (message-type msg)
           handler (handlers type)]
       (send-json out (handler msg))
       (when-not (= type :stop)
         (recur (read-json in))))))
 
 (defn -main [& args]
-  (println "args: " args)
+  (run "drop-tables-team" *in* *out*)
   (System/exit 0))

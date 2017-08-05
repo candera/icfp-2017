@@ -35,14 +35,21 @@
   (contains? move "state"))
 
 (deftest some-tests
-  (let [punter 1
+  (let [punter 0
         state  {"punter"  punter
                 "punters" 2
-                "map"     map0}
-        move   (handle-move {"moves" []
+                "map"     map0}]
+    (let [move (handle-move {"moves" []
                              "state" state})]
-    (is (valid-move? state move))
-    (is (state-valid? state move))))
+      (is (valid-move? state move))
+      (is (state-valid? state move))
+      (is (= #{0 1} #{(get-in move ["claim" "source"])
+                      (get-in move ["claim" "target"])})))
+    (let [move (handle-move {"moves" [{"claim" {"punter" 2
+                                                "source" 0
+                                                "target" 1}}]
+                             "state" state})]
+      (is (valid-pass? state (get move "pass"))))))
 
 
 

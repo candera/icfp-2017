@@ -34,20 +34,34 @@
                            #"^punter$"
                            #"^install$"})
           (with-pre-wrap [fs]
+            (boot.util/info "Creating .tar.gz file...\n")
             (let [tmpd         (tmp-dir!)
-                  files-to-tar (->> fs
-                                    input-files
-                                    (map #(.getAbsolutePath (tmp-file %))))
+                  inputs       (->> fs input-files)
+                  ;; These don't exist yet
+                  copied-files (map #(io/file tmpd (.getName (tmp-file %))) inputs)
                   tar-file     (->> team-id
                                     (format "icfp-%s.tar")
                                     (io/file tmpd)
                                     .getAbsolutePath)]
-              (apply dosh "tar" "-cf" tar-file files-to-tar)
+
+              ;; Copy inputs to tmp dir
+              (doseq [[input output] (map vector inputs copied-files)]
+                (dosh "cp" (.getAbsolutePath (tmp-file input)) (.getAbsolutePath output)))
+
+              ;; Create the tar file
+              (apply dosh "tar" "-czf" tar-file "-C" (.getAbsolutePath tmpd) (map #(.getName %) copied-files))
+
+              ;; Delete the copies
+              (apply dosh "rm" "-f" (map #(.getAbsolutePath %) copied-files))
+
+              ;; gzip the tar (deletes tar)
               (dosh "gzip" tar-file)
+
               (-> fs
                   (add-resource tmpd)
                   commit!)))
-          (sift :include #{#".tar.gz$"}))))
+          (sift :include #{#".tar.gz$"})
+          (target))))
 
 #_(defn run-tests []
   (clojure.test/run-tests 'icfp-2017.test))

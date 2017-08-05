@@ -1,10 +1,11 @@
 (merge-env!
  :resource-paths #{"src" "scripts" "test"}
- :source-paths   #{"src" "test"}
+ :source-paths   #{}
 
  :dependencies   (template [[org.clojure/clojure ~(clojure-version)]
                             [org.clojure/data.json "0.2.6"]
                             [org.clojure/tools.logging "0.4.0"]
+                            [log4j "1.2.17"]
 
                             [adzerk/boot-test "1.2.0" :scope "test"]])
 
@@ -23,17 +24,20 @@
 (defn refresh []
   (require :reload-all '[icfp-2017.main :as main]))
 
-(deftask package
+(deftask build
+  []
+  (comp (uber)
+        (jar :file "punter.jar")
+        (sift :include #{#"^punter.jar$"
+                         #"^punter$"
+                         #"^install$"})))
+
+(deftask tarball
   [t team-id UUID str "Contest team ID. May also be specified with TEAM_ID environment variable."]
   (let [team-id (or team-id
                     (System/getenv "TEAM_ID")
                     (throw (ex-info "team-id argument or TEAM_ID env var are required" {})))]
-    (comp (uber)
-          (jar :file "punter.jar")
-          (sift :include #{#"^punter.jar$"
-                           #"^punter$"
-                           #"^install$"})
-          (with-pre-wrap [fs]
+    (comp (with-pre-wrap [fs]
             (boot.util/info "Creating .tar.gz file...\n")
             (let [tmpd         (tmp-dir!)
                   inputs       (->> fs input-files)
@@ -57,8 +61,13 @@
               (-> fs
                   (add-resource tmpd)
                   commit!)))
-          (sift :include #{#".tar.gz$"})
-          (target))))
+          (sift :include #{#".tar.gz$"}))))
+
+(deftask package
+  [t team-id UUID str "Contest team ID. May also be specified with TEAM_ID environment variable."]
+  (comp (build)
+        (tarball :team-id team-id)))
+
 
 #_(defn run-tests []
   (clojure.test/run-tests 'icfp-2017.test))

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-boot package
+boot build target
 cd target
-tar xvfz icfp-TESTING.tar.gz
-./punter
+echo "Launching"
+./punter $@

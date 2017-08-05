@@ -1,0 +1,9 @@
+{"you": "isyou"}
+{"punter":1,
+ "punters":2,
+ "map":{"sites":[{"id":0},
+                 {"id":1}],
+        "rivers":[{"source":0,
+                   "target":1}],
+        "mines":[0 1]}}
+

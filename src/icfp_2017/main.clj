@@ -16,9 +16,7 @@
 (defn read-json
   [in]
   ;; Throw away the length leader
-  (while (not= \: (char (.read in)))
-    (log/debug "Read throwaway character"))
-  (log/debug "Found colon")
+  (while (not= \: (char (.read in))))
   (let [val (json/read in)]
     (log/debug "read:" (pr-str val))
     val))
@@ -85,37 +83,52 @@
    :move  handle-move
    :stop  handle-stop})
 
-(defn read-message
+(defn run-offline
   [name in out]
-  (log/debug "Reading handshake")
   (handshake name in out)
-  (log/debug "Reading message")
-  (read-json in))
-
-(defn run
-  [name in out]
-  (loop [msg (read-message name in out)]
+  (loop [msg (read-json in)]
     (log/debug "Entering run loop")
     (let [type    (message-type msg)
           handler (handlers type)]
       (log/debug "Received message of type" :type type :msg msg)
       (send-json out (handler msg))
       (when (#{:setup :move} type)
+        (handshake name in out)
         (recur (read-json in))))))
 
-(defn run-socket
+(defn run-online
   [name host port]
   (let [socket (java.net.Socket. (java.net.InetAddress/getByName host) port)
         _      (log/debug "Socket connection successful")
         is     (.getInputStream socket)
-        os     (.getOutputStream socket)]
-    (run "drop-tables-team" (io/reader is) (io/writer os))))
+        os     (.getOutputStream socket)
+        in     (io/reader is)
+        out    (io/writer os)]
+    (handshake name in out)
+    (let [{:strs [punter] :as setup} (read-json in)]
+      (log/info "We are punter" :punter punter)
+      (send-json out {"ready" punter})
+      (loop [msg (read-json in)]
+        (let [type (message-type msg)]
+          (if (= type :move)
+            (do
+              (send-json out (handle-move (assoc msg "state" setup)))
+              (recur (read-json in)))
+            (do
+              (log/debug "Shutting down because message was" :type type :msg msg)
+              (doseq [{:strs [punter score]} (sort-by #(get % "score") (get-in msg ["stop" "scores"]))]
+                (log/info "Score"
+                          :us? (= punter (get setup "punter"))
+                          :punter punter
+                          :score score))
+              (.close in)
+              (.close out))))))))
 
 (defn -main [& args]
   (log/info "Starting")
   (let [[host port & more]  args]
     (if host
-      (run-socket "drop-tables-team" host (Integer/parseInt port))
-      (run "drop-tables-team" *in* *out*)))
+      (run-online "drop-tables-team" host (Integer/parseInt port))
+      (run-offline "drop-tables-team" *in* *out*)))
   (log/info "Terminating")
   (System/exit 0))

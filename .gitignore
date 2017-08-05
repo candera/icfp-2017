@@ -1,3 +1,5 @@
 .nrepl-*
 target/
 .DS_Store
+*.log
+*.log.*

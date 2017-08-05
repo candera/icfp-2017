@@ -79,4 +79,6 @@
 
 (ancestors (class *in*))
 
-
+(defn -main [& args]
+  (println "args: " args)
+  (System/exit 0))

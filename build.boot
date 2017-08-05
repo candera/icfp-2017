@@ -1,5 +1,5 @@
 (merge-env!
- :source-paths   #{"src"}
+ :resource-paths #{"src" "scripts"}
 
  :dependencies   (template [[org.clojure/clojure ~(clojure-version)]
                             [org.clojure/data.json "0.2.6"]
@@ -15,4 +15,15 @@
 
 (defn refresh []
   (require :reload-all '[icfp-2017.main :as main]))
+
+(deftask build-deliverable
+  [t team-id UUID str "Contest team ID. May also be specified with TEAM_ID environment variable."]
+  (let [team-id (or team-id
+                    (System/getenv "TEAM_ID")
+                    (throw (ex-info "team-id argument or TEAM_ID env var are required" {})))]
+    (comp (uber)
+          (jar :file "punter.jar")
+          (sift :include #{#"^punter.jar$"
+                           #"^punter$"
+                           #"^install$"}))))
 

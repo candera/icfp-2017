@@ -79,3 +79,7 @@
       (send-json out (handler msg))
       (when-not (= type :stop)
         (recur (read-json in))))))
+
+(defn -main [& args]
+  (println "args: " args)
+  (System/exit 0))

@@ -16,14 +16,3 @@
 (defn refresh []
   (require :reload-all '[icfp-2017.main :as main]))
 
-(defn exercise-setup []
-  (main/game "foo"
-             (java.io.StringReader. (apply str (map json/write-str [{"you" "foo"}
-                                                                    {"punter"  1
-                                                                     "punters" 3
-                                                                     "map"     {"sites"  [{"id" 0}
-                                                                                          {"id" 1}]
-                                                                                "rivers" [{"source" 0
-                                                                                           "target" 1}]
-                                                                                "mines"  [0 1]}}])))
-             *out*))

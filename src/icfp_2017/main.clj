@@ -52,13 +52,13 @@
    :stop  handle-stop})
 
 (defn read-message
-  [in]
+  [in out]
   (handshake in out)
   (read-json in))
 
 (defn run
   [in out]
-  (loop [msg (read-message in)]
+  (loop [msg (read-message in out)]
     (let [type (message-type msg)
           handler (handlers type)]
       (send-json out (handler msg))

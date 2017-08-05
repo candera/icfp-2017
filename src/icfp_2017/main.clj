@@ -5,11 +5,16 @@
 
 (defn send-json
   [out data]
-  (log/info "sent: " (pr-str data))
-  (json/write data out))
+  (let [encoded (json/write-str data)
+        l (count encoded)
+        payload (format "%d:%s" (count encoded) encoded)]
+    (log/info "sent: " payload)
+    (.write out (.toCharArray payload))))
 
 (defn read-json
   [in]
+  ;; Throw away the length leader
+  (while (not= \: (char (.read in))))
   (let [val (json/read in)]
     (log/info "read:" (pr-str val))
     val))
@@ -28,15 +33,18 @@
 
 (defn riverize
   [x]
-  (select-keys x ["source" "target"]))
+  #{(get x "source")
+    (get x "target")})
 
 (defn river=
   [a b]
   (= (riverize a) (riverize b)))
 
 (defn unclaimed-rivers
-  [map moves]
-  (set/difference (set (get map "rivers"))
+  [{:strs [rivers]} moves]
+  (set/difference (->> rivers
+                       (map riverize)
+                       set)
                   (->> moves
                        (map #(get % "claim"))
                        (remove nil?)
@@ -46,9 +54,11 @@
 (defn handle-move
   [{:strs [moves state] :as msg}]
   (let [{:strs [punter punters map]} state
-        river (first (unclaimed-rivers map moves))]
+        [source target :as river]    (seq (first (unclaimed-rivers map moves)))]
     (if river
-      {"claim" (assoc river "punter" punter)
+      {"claim" {"source" source
+                "target" target
+                "punter" punter}
        "state" state}
       {"pass" {"punter" punter}})))
 

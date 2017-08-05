@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+set -e
+java -cp punter.jar clojure.main -m icfp-2017.main $@

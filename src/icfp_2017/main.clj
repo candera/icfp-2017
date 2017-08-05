@@ -31,7 +31,8 @@
     {"claim" {"punter" punter
               ;; TODO:
               "source" 42
-              "target" 1024}}))
+              "target" 1024}
+     "state" state}))
 
 (defn handle-stop
   [{:strs [stop]}]
@@ -64,20 +65,6 @@
       (send-json out (handler msg))
       (when-not (= type :stop)
         (recur (read-json in))))))
-
-#_(proxy [java.io.Reader] []
-  (close [])
-  (mark [readAheadLimit])
-  (markSupported [])
-  (read
-    ([])
-    ([cbuf])
-    ([cbuf offset len]))
-  (ready [])
-  (reset [])
-  (skip [n]))
-
-(ancestors (class *in*))
 
 (defn -main [& args]
   (println "args: " args)

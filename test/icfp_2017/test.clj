@@ -8,22 +8,41 @@
                       "target" 1}]
            "mines"  [0 1]})
 
+(defn valid-claim?
+  [prior-state claim]
+  (let [{:strs [punter source target]} claim]
+    (and punter source target (= punter (get prior-state "punter")))))
+
+(defn valid-pass?
+  [prior-state pass]
+  (let [{:strs [punter]} pass]
+    (and punter (= punter (get prior-state "punter")))))
+
 (defn valid-move?
-  [move]
-  (or (contains? move "claim")
-      (contains? move "pass")))
+  [prior-state move]
+  (cond
+    (contains? move "claim")
+    (valid-claim? prior-state (get move "claim"))
+
+    (contains? move "pass")
+    (valid-pass? prior-state (get move "pass"))
+
+    :else
+    false))
 
 (defn state-valid?
-  [move]
+  [prior-state move]
   (contains? move "state"))
 
-(deftest smoke-test
-  (let [move (handle-move {"moves" []
-                           "state" {"punter" 1
-                                    "punters" 2
-                                    "map" map0}})]
-    (is (valid-move? move))
-    (is (state-valid? move))))
+(deftest some-tests
+  (let [punter 1
+        state  {"punter"  punter
+                "punters" 2
+                "map"     map0}
+        move   (handle-move {"moves" []
+                             "state" state})]
+    (is (valid-move? state move))
+    (is (state-valid? state move))))
 
 
 

@@ -25,9 +25,7 @@
   [name in out]
   (log/debug "Starting handshake read")
   (send-json out {"me" name})
-  (read-json in)
-  ;; TODO: Verify that it's what's expected.
-)
+  (read-json in))
 
 (defn handle-setup
   [{:strs [punter punters map] :as msg}]
@@ -38,10 +36,6 @@
   [x]
   #{(get x "source")
     (get x "target")})
-
-(defn river=
-  [a b]
-  (= (riverize a) (riverize b)))
 
 (defn unclaimed-rivers
   [{:strs [rivers]} moves]
@@ -54,10 +48,43 @@
                        (map riverize)
                        set)))
 
+(defn my-rivers
+  [me moves]
+  (->> moves
+       (filter #(= me (get-in % ["claim" "punter"])))
+       (map #(get % "claim"))
+       (map riverize)
+       set))
+
+(defn river-sites
+  [rivers]
+  (reduce into #{} rivers))
+
+(defn river-touches?
+  [sites river]
+  (some river sites))
+
+(defn desirability
+  [map my-sites river]
+  (let [{:strs [mines]} map]
+    (cond
+      (river-touches? mines river)
+      2
+
+      (river-touches? my-sites river)
+      1
+
+      :else
+      0)))
+
 (defn handle-move
   [{:strs [moves state] :as msg}]
   (let [{:strs [punter punters map]} state
-        [source target :as river]    (seq (first (unclaimed-rivers map moves)))]
+        our-rivers                   (my-rivers punter moves)
+        [source target :as river]    (->> (unclaimed-rivers map moves)
+                                          (sort-by #(desirability map (river-sites our-rivers) %))
+                                          last
+                                          seq)]
     (if river
       {"claim" {"source" source
                 "target" target
@@ -85,6 +112,7 @@
 
 (defn run-offline
   [name in out]
+  (log/info "Starting an offline game")
   (handshake name in out)
   (loop [msg (read-json in)]
     (log/debug "Entering run loop")
@@ -94,10 +122,12 @@
       (send-json out (handler msg))
       (when (#{:setup :move} type)
         (handshake name in out)
-        (recur (read-json in))))))
+        (recur (read-json in)))))
+  (log/info "Offline game has completed"))
 
 (defn run-online
   [name host port]
+  (log/info "Starting an online game")
   (let [socket (java.net.Socket. (java.net.InetAddress/getByName host) port)
         _      (log/debug "Socket connection successful")
         is     (.getInputStream socket)
@@ -108,21 +138,30 @@
     (let [{:strs [punter] :as setup} (read-json in)]
       (log/info "We are punter" :punter punter)
       (send-json out {"ready" punter})
-      (loop [msg (read-json in)]
+      (loop [moves []
+             msg   (read-json in)]
         (let [type (message-type msg)]
           (if (= type :move)
+            (let [all-moves (into moves (get msg "moves"))]
+              (send-json out (handle-move {"moves" all-moves
+                                           "state" setup}))
+              (recur all-moves (read-json in)))
             (do
-              (send-json out (handle-move (assoc msg "state" setup)))
-              (recur (read-json in)))
-            (do
-              (log/debug "Shutting down because message was" :type type :msg msg)
-              (doseq [{:strs [punter score]} (sort-by #(get % "score") (get-in msg ["stop" "scores"]))]
-                (log/info "Score"
-                          :us? (= punter (get setup "punter"))
-                          :punter punter
-                          :score score))
+              (log/debug "Shutting down because message was" :type type :msg msg :moves moves)
+              (->> (get-in msg ["stop" "scores"])
+                   (sort-by #(get % "score") )
+                   (map (fn [{:strs [punter score]}]
+                          (format "%10d: %d %s\n"
+                                  punter
+                                  score
+                                  (if (= (get setup "punter") punter)
+                                    "**us*"
+                                    ""))))
+                   (apply str (format "\n%10s: %s\n" "punter" "score"))
+                   (log/info "score"))
               (.close in)
-              (.close out))))))))
+              (.close out)))))))
+  (log/info "Online game has completed"))
 
 (defn -main [& args]
   (log/info "Starting")

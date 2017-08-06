@@ -1,6 +1,6 @@
 (merge-env!
- :resource-paths #{"src" "scripts" "test"}
- :source-paths   #{}
+ :resource-paths #{"src"}
+ :source-paths   #{"test"}
 
  :dependencies   (template [[org.clojure/clojure ~(clojure-version)]
                             [org.clojure/data.json "0.2.6"]
@@ -30,44 +30,5 @@
         (jar :file "punter.jar")
         (sift :include #{#"^punter.jar$"
                          #"^punter$"
-                         #"^install$"})))
-
-(deftask tarball
-  [t team-id UUID str "Contest team ID. May also be specified with TEAM_ID environment variable."]
-  (let [team-id (or team-id
-                    (System/getenv "TEAM_ID")
-                    (throw (ex-info "team-id argument or TEAM_ID env var are required" {})))]
-    (comp (with-pre-wrap [fs]
-            (boot.util/info "Creating .tar.gz file...\n")
-            (let [tmpd         (tmp-dir!)
-                  inputs       (->> fs input-files)
-                  ;; These don't exist yet
-                  copied-files (map #(io/file tmpd (.getName (tmp-file %))) inputs)
-                  tar-file     (->> team-id
-                                    (format "icfp-%s.tar")
-                                    (io/file tmpd)
-                                    .getAbsolutePath)]
-
-              ;; Copy inputs to tmp dir
-              (doseq [[input output] (map vector inputs copied-files)]
-                (dosh "cp" (.getAbsolutePath (tmp-file input)) (.getAbsolutePath output)))
-
-              ;; Create the tar file
-              (apply dosh "tar" "-czf" (str tar-file ".gz") "-C" (.getAbsolutePath tmpd) (map #(.getName %) copied-files))
-
-              ;; Delete the copies
-              (apply dosh "rm" "-f" (map #(.getAbsolutePath %) copied-files))
-
-              (-> fs
-                  (add-resource tmpd)
-                  commit!)))
-          (sift :include #{#".tar.gz$"}))))
-
-(deftask package
-  [t team-id UUID str "Contest team ID. May also be specified with TEAM_ID environment variable."]
-  (comp (build)
-        (tarball :team-id team-id)))
-
-
-#_(defn run-tests []
-  (clojure.test/run-tests 'icfp-2017.test))
+                         #"^install$"})
+        (target)))

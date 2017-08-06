@@ -1,0 +1,34 @@
+Team "drop table team;" ICFP Contest 2017 Submission
+
+Team Members
+
+  Craig Andera
+  Alan Dipert
+
+About
+
+  Our submission is written in Clojure, and our build produces a .jar file that
+  requires only a JDK installation.
+
+  The strategy we implemented is simple. We claim available rivers in the
+  following order of preference:
+
+      1) The river connects to a mine.
+      2) The river connects to a river we've already claimed.
+
+  The time we had available to work on our submission was limited to one day of
+  remote pair-programming, and so we didn't have the time to develop further.
+  However, when our time was up we had some ideas about how we would proceed.
+
+  We decided that the next level of sophistication would be the implementation
+  of a scoring function. We believe use of the Loom (1) library would make this
+  straightforward.
+
+  Once we had a scoring function, we could assess available rivers in terms of
+  how they could improve our score.
+
+  For any strategies more involved than this, we thought we'd first need to
+  develop a gameplay visualization. A visualization would help us understand
+  better our opponents play, and to develop better search algorithms.
+
+1. https://github.com/aysylu/loom

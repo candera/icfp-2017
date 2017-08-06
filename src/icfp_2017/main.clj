@@ -78,8 +78,9 @@
       0)))
 
 (defn handle-move
-  [{:strs [moves state] :as msg}]
+  [{:strs [move state] :as msg}]
   (let [{:strs [punter punters map]} state
+        {:strs [moves]} move
         our-rivers                   (my-rivers punter moves)
         [source target :as river]    (->> (unclaimed-rivers map moves)
                                           (sort-by #(desirability map (river-sites our-rivers) %))
@@ -142,8 +143,9 @@
              msg   (read-json in)]
         (let [type (message-type msg)]
           (if (= type :move)
-            (let [all-moves (into moves (get msg "moves"))]
-              (send-json out (handle-move {"moves" all-moves
+            (let [all-moves (into moves (get-in msg ["move" "moves"]))]
+              (log/debug :moves all-moves)
+              (send-json out (handle-move {"move" {"moves" all-moves}
                                            "state" setup}))
               (recur all-moves (read-json in)))
             (do
